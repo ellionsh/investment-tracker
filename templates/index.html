@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>账户管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    <style>
+        #transferModal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+        #transferModalContent {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <h1>账户管理系统</h1>
+    <div>
+        <label for="accountType">账户类型:</label>
+        <select id="accountType">
+            <option value="银行账户">银行账户</option>
+            <option value="股票账户">股票账户</option>
+            <option value="投资账户">投资账户</option>
+            <option value="信用账户">信用账户</option>
+            <option value="其他账户">其他账户</option>
+        </select>
+        <label for="accountDetails">账户详情:</label>
+        <input type="text" id="accountDetails" placeholder="账户详情">
+        <label for="stockSymbol" style="display:none">股票代码:</label>
+        <input type="text" id="stockSymbol" placeholder="股票代码" style="display:none;">
+        <label for="shares" style="display:none">股票数量:</label>
+        <input type="number" id="shares" placeholder="股票数" style="display:none;">
+        <input type="number" id="marketValue" placeholder="市值" step="0.01">
+        <button id="addAccountButton" onclick="addAccount()">添加账户</button>
+    </div>
+    <div>
+        <button onclick="refreshMarketValues()">刷新市值</button>
+        <button id="transferButton">转账</button>
+        <button onclick="window.location.href='{{ url_for('logout') }}'">登出</button>
+    </div>
+    <h2>账户列表</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>类型</th>
+                <th>详情</th>
+                <th>股票代码</th>
+                <th>股票数量</th>
+                <th>市值</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="accountList"></tbody>
+    </table>
+    <h2>总市值: <span id="totalMarketValue">0.00</span></h2>
+    <h2>账户类型市值统计</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>账户类型</th>
+                <th>总市值</th>
+            </tr>
+        </thead>
+        <tbody id="typeMarketValues">
+            <!-- 市值统计结果将在这里显示 -->
+        </tbody>
+    </table>
+    <h2>每月总市值变化</h2>
+    <canvas id="marketValueChart"></canvas>
+
+    <div id="transferModal">
+        <div id="transferModalContent">
+            <h2>转账</h2>
+            <label for="fromAccount">从账户:</label>
+            <select id="fromAccount"></select>
+            <label for="toAccount">到账户:</label>
+            <select id="toAccount"></select>
+            <label for="transferAmount">金额:</label>
+            <input type="number" id="transferAmount" step="0.01">
+            <button id="submitTransferButton">完成</button>
+            <button id="cancelTransferButton">取消</button>
+        </div>
+    </div>
+</body>
+</html>
