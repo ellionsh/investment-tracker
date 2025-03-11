@@ -14,6 +14,8 @@ app = Flask(__name__)
 app.config.from_object('config.Config')
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -112,9 +114,9 @@ def get_exchange_rate():
 
 def is_local_network(ip):
     local_patterns = [
-        re.compile(r'^127\.'), 
-        re.compile(r'^192\.168\.'), 
-        re.compile(r'^10\.'), 
+        re.compile(r'^127\.'),
+        re.compile(r'^192\.168\.'),
+        re.compile(r'^10\.'),
         re.compile(r'^172\.(1[6-9]|2[0-9]|3[0-1])\.')
     ]
     for pattern in local_patterns:
@@ -126,7 +128,9 @@ def local_network_or_login_required(func):
     def wrapper(*args, **kwargs):
         if is_local_network(request.remote_addr):
             if not current_user.is_authenticated:
-                user = User.query.get(1) 
+                if not User.query.first():
+                    return redirect(url_for('register'))
+                user = User.query.get(1)
                 login_user(user)
             return func(*args, **kwargs)
         return login_required(func)(*args, **kwargs)
@@ -168,6 +172,8 @@ def logout():
 @app.route('/')
 @local_network_or_login_required
 def index():
+    if not User.query.first():
+        return redirect(url_for('register'))
     return render_template('index.html')
 
 @app.route('/api/accounts', methods=['GET'])
@@ -193,7 +199,7 @@ def add_account():
         exchange_rate = get_exchange_rate()
         market_value = stock_price * data['shares'] * exchange_rate
     else:
-        market_value = data.get('marketValue', 0) 
+        market_value = data.get('marketValue', 0)
 
     new_account = Account(
         type=data['type'],
@@ -337,7 +343,7 @@ def calculate_monthly_total_market_value():
         total_market_value = sum(account.marketValue or 0 for account in accounts)
         new_value = MonthlyMarketValue(
             totalMarketValue=total_market_value,
-            month=date.today().replace(day=1) 
+            month=date.today().replace(day=1)
         )
         db.session.add(new_value)
         db.session.commit()
