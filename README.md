@@ -54,7 +54,7 @@ flask db upgrade
 6. Run the application:
 
 ```sh
-flask run
+python app.py
 ```
 
 ## Usage
