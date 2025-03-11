@@ -46,9 +46,9 @@ class Config:
 5. Initialize the database:
 
 ```sh
-flask db init
-flask db migrate
-flask db upgrade
+python manage.py db init
+python manage.py db migrate
+python manage.py db upgrade
 ```
 
 6. Run the application:

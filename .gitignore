@@ -1,4 +1,5 @@
 venv/
+migrations/
 __pycache__/
 *.pyc
 instance/
