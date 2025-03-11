@@ -15,7 +15,7 @@ This is a Python-based investment tracking application that allows users to mana
 1. Clone the repository:
 
 ```sh
-git clone https://github.com/ellionsh/investment-tracker.git
+git clone -b master https://github.com/ellionsh/investment-tracker.git
 cd investment-tracker
 ```
 
