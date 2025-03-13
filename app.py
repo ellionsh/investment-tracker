@@ -1,25 +1,23 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import DECIMAL, func
+from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timezone, date, timedelta
+from datetime import datetime, timezone, date
 from apscheduler.schedulers.background import BackgroundScheduler
 import requests
 import re
 import os
-import logging
 
 app = Flask(__name__)
 app.config.from_object('config.Config')
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)  # 设置 session 有效期为 30 分钟
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-login_manager.session_protection = 'strong'  # 启用 session 保护
-
-logging.basicConfig(level=logging.INFO)
 
 class User(UserMixin, db.Model):
     __tablename__ = 'Users'
@@ -68,16 +66,12 @@ class MonthlyMarketValue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     totalMarketValue = db.Column(db.Float, nullable=False)
     month = db.Column(db.Date, nullable=False)
-    createdAt = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    updatedAt = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
             'id': self.id,
             'totalMarketValue': self.totalMarketValue,
-            'month': self.month.strftime('%Y-%m-%d'),
-            'createdAt': self.createdAt.strftime('%Y-%m-%d %H:%M:%S'),
-            'updatedAt': self.updatedAt.strftime('%Y-%m-%d %H:%M:%S')
+            'month': self.month.strftime('%Y-%m-%d')
         }
 
 class Transaction(db.Model):
@@ -111,9 +105,6 @@ def get_stock_price(symbol):
     url = f'https://api.polygon.io/v2/aggs/ticker/{symbol}/prev?adjusted=true&apiKey={app.config["POLYGON_API_KEY"]}'
     response = requests.get(url)
     data = response.json()
-    if 'results' not in data:
-        logging.error(f"Error fetching stock price for {symbol}: {data}")
-        raise ValueError(f"Error fetching stock price for {symbol}: {data}")
     return data['results'][0]['c']
 
 def get_exchange_rate():
@@ -135,11 +126,7 @@ def is_local_network(ip):
 
 def local_network_or_login_required(func):
     def wrapper(*args, **kwargs):
-        forwarded_for = request.headers.get('X-Forwarded-For', '')
-        print(f"forwarded_for: {forwarded_for}")
-        print(f"remote_addr: {request.remote_addr}")
-        ip = forwarded_for.split(',')[0] if forwarded_for else request.remote_addr
-        if is_local_network(ip):
+        if is_local_network(request.remote_addr):
             if not current_user.is_authenticated:
                 if not User.query.first():
                     return redirect(url_for('register'))
@@ -185,6 +172,8 @@ def logout():
 @app.route('/')
 @local_network_or_login_required
 def index():
+    if not User.query.first():
+        return redirect(url_for('register'))
     return render_template('index.html')
 
 @app.route('/api/accounts', methods=['GET'])
@@ -266,9 +255,7 @@ def add_monthly_market_value():
     data = request.json
     new_value = MonthlyMarketValue(
         totalMarketValue=data['totalMarketValue'],
-        month=datetime.strptime(data['month'], '%Y-%m-%d'),
-        createdAt=datetime.now(timezone.utc),
-        updatedAt=datetime.now(timezone.utc)
+        month=datetime.strptime(data['month'], '%Y-%m-%d')
     )
     db.session.add(new_value)
     db.session.commit()
@@ -281,21 +268,8 @@ def refresh_market_values():
     exchange_rate = get_exchange_rate()
     for account in accounts:
         stock_price = get_stock_price(account.stockSymbol)
-        previous_market_value = account.marketValue
-        new_market_value = stock_price * account.shares * exchange_rate
-        if previous_market_value != new_market_value:
-            transaction = Transaction(
-                accountId=account.id,
-                change=new_market_value - previous_market_value,
-                previousBalance=previous_market_value,
-                newBalance=new_market_value,
-                timestamp=datetime.now(timezone.utc),
-                createdAt=datetime.now(timezone.utc),
-                updatedAt=datetime.now(timezone.utc)
-            )
-            db.session.add(transaction)
-            account.marketValue = new_market_value
-            account.updatedAt = datetime.now(timezone.utc)
+        account.marketValue = stock_price * account.shares * exchange_rate
+        account.updatedAt = datetime.now(timezone.utc)
     db.session.commit()
     return jsonify({'message': 'Market values refreshed'}), 200
 
@@ -353,40 +327,14 @@ def get_type_market_values():
     result = {type_: marketValue for type_, marketValue in type_market_values}
     return jsonify(result)
 
-@app.route('/api/transactions', methods=['GET'])
-@local_network_or_login_required
-def get_transactions():
-    start_of_month = date.today().replace(day=1)
-    transactions = Transaction.query.filter(
-        Transaction.accountId.in_([account.id for account in current_user.accounts]),
-        Transaction.timestamp >= start_of_month
-    ).order_by(Transaction.timestamp.desc()).all()
-    return jsonify([transaction.to_dict() for transaction in transactions])
-
 def refresh_daily_stock_market_values():
     with app.app_context():
         accounts = Account.query.filter_by(type='股票账户').all()
         exchange_rate = get_exchange_rate()
         for account in accounts:
-            try:
-                stock_price = get_stock_price(account.stockSymbol)
-                previous_market_value = account.marketValue
-                new_market_value = stock_price * account.shares * exchange_rate
-                if previous_market_value != new_market_value:
-                    transaction = Transaction(
-                        accountId=account.id,
-                        change=new_market_value - previous_market_value,
-                        previousBalance=previous_market_value,
-                        newBalance=new_market_value,
-                        timestamp=datetime.now(timezone.utc),
-                        createdAt=datetime.now(timezone.utc),
-                        updatedAt=datetime.now(timezone.utc)
-                    )
-                    db.session.add(transaction)
-                    account.marketValue = new_market_value
-                    account.updatedAt = datetime.now(timezone.utc)
-            except ValueError as e:
-                logging.error(f"Error updating stock price for {account.stockSymbol}: {e}")
+            stock_price = get_stock_price(account.stockSymbol)
+            account.marketValue = stock_price * account.shares * exchange_rate
+            account.updatedAt = datetime.now(timezone.utc)
         db.session.commit()
 
 def calculate_monthly_total_market_value():
@@ -395,22 +343,14 @@ def calculate_monthly_total_market_value():
         total_market_value = sum(account.marketValue or 0 for account in accounts)
         new_value = MonthlyMarketValue(
             totalMarketValue=total_market_value,
-            month=date.today().replace(day=1),
-            createdAt=datetime.now(timezone.utc),
-            updatedAt=datetime.now(timezone.utc)
+            month=date.today().replace(day=1)
         )
         db.session.add(new_value)
         db.session.commit()
 
-# 手动刷新路由
-@app.route('/manual-refresh', methods=['POST'])
-def manual_refresh():
-    refresh_daily_stock_market_values()
-    return jsonify({'message': 'Market values refreshed manually'}), 200
-
 scheduler = BackgroundScheduler()
-scheduler.add_job(func=refresh_daily_stock_market_values, trigger='cron', hour=9, minute=0)
-scheduler.add_job(func=calculate_monthly_total_market_value, trigger='cron', day=1, hour=9, minute=0)
+scheduler.add_job(func=refresh_daily_stock_market_values, trigger='cron', hour=0, minute=0)
+scheduler.add_job(func=calculate_monthly_total_market_value, trigger='cron', day=1, hour=0, minute=0)
 scheduler.start()
 
 if __name__ == '__main__':
