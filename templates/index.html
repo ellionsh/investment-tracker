@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
     <style>
-        #transferModal {
+        #transferModal, #incomeModal, #expenseModal, #transactionsModal, #deleteConfirmModal {
             display: none;
             position: fixed;
             z-index: 1;
@@ -21,7 +21,7 @@
             background-color: rgba(0,0,0,0.4);
             padding-top: 60px;
         }
-        #transferModalContent {
+        #transferModalContent, #incomeModalContent, #expenseModalContent, #transactionsModalContent, #deleteConfirmModalContent {
             background-color: #fefefe;
             margin: 5% auto;
             padding: 20px;
@@ -52,6 +52,9 @@
     </div>
     <div>
         <button onclick="refreshMarketValues()">刷新市值</button>
+        <button id="incomeButton">收入</button>
+        <button id="expenseButton">支出</button>
+        <button id="transactionsButton">流水</button>
         <button id="transferButton">转账</button>
         <button onclick="window.location.href='{{ url_for('logout') }}'">登出</button>
     </div>
@@ -96,6 +99,87 @@
             <input type="number" id="transferAmount" step="0.01">
             <button id="submitTransferButton">完成</button>
             <button id="cancelTransferButton">取消</button>
+        </div>
+    </div>
+
+    <div id="incomeModal">
+        <div id="incomeModalContent">
+            <h2>收入</h2>
+            <label for="incomeAccount">选择账户:</label>
+            <select id="incomeAccount"></select>
+            <label for="incomeReason">收入原因:</label>
+            <select id="incomeReason">
+                <option value="工资">工资</option>
+                <option value="兼职">兼职</option>
+                <option value="薅羊毛">薅羊毛</option>
+                <option value="理财">理财</option>
+                <option value="租金">租金</option>
+                <option value="还款">还款</option>
+                <option value="其他">其他</option>
+            </select>
+            <label for="incomeAmount">金额:</label>
+            <input type="number" id="incomeAmount" step="0.01">
+            <button id="submitIncomeButton">确认</button>
+            <button id="cancelIncomeButton">取消</button>
+        </div>
+    </div>
+
+    <div id="expenseModal">
+        <div id="expenseModalContent">
+            <h2>支出</h2>
+            <label for="expenseAccount">选择账户:</label>
+            <select id="expenseAccount"></select>
+            <label for="expenseReason">支出原因:</label>
+            <select id="expenseReason">
+                <option value="物业费">物业费</option>
+                <option value="水电煤">水电煤</option>
+                <option value="还信用卡">还信用卡</option>
+                <option value="还花呗">还花呗</option>
+                <option value="还贷款">还贷款</option>
+                <option value="投资亏损">投资亏损</option>
+                <option value="借出">借出</option>
+                <option value="社交">社交</option>
+                <option value="旅游">旅游</option>
+                <option value="吃饭">吃饭</option>
+                <option value="房租">房租</option>
+                <option value="其他">其他</option>
+            </select>
+            <label for="expenseAmount">金额:</label>
+            <input type="number" id="expenseAmount" step="0.01">
+            <button id="submitExpenseButton">确认</button>
+            <button id="cancelExpenseButton">取消</button>
+        </div>
+    </div>
+
+    <div id="transactionsModal">
+        <div id="transactionsModalContent">
+            <h2>流水</h2>
+            <label for="startDate">开始日期:</label>
+            <input type="date" id="startDate">
+            <label for="endDate">结束日期:</label>
+            <input type="date" id="endDate">
+            <button id="submitTransactionsButton">查询</button>
+            <button id="cancelTransactionsButton">取消</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>账户详情</th>
+                        <th>变化金额</th>
+                        <th>原因</th>
+                        <th>日期</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionsList"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="deleteConfirmModal">
+        <div id="deleteConfirmModalContent">
+            <h2>确认删除</h2>
+            <p>您确定要删除这个账户吗？此操作无法撤销。</p>
+            <button id="confirmDeleteButton">确认</button>
+            <button id="cancelDeleteButton">取消</button>
         </div>
     </div>
 </body>

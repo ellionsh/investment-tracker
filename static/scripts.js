@@ -4,12 +4,27 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchTypeMarketValues();
 
     document.getElementById('accountType').addEventListener('change', handleTypeChange);
+    document.getElementById('incomeButton').addEventListener('click', showIncomeModal);
+    document.getElementById('expenseButton').addEventListener('click', showExpenseModal);
+    document.getElementById('transactionsButton').addEventListener('click', showTransactionsModal);
     document.getElementById('transferButton').addEventListener('click', showTransferModal);
+    document.getElementById('submitIncomeButton').addEventListener('click', addIncome);
+    document.getElementById('submitExpenseButton').addEventListener('click', addExpense);
     document.getElementById('submitTransferButton').addEventListener('click', transferFunds);
+    document.getElementById('submitTransactionsButton').addEventListener('click', fetchTransactions);
+    document.getElementById('cancelIncomeButton').addEventListener('click', hideIncomeModal);
+    document.getElementById('cancelExpenseButton').addEventListener('click', hideExpenseModal);
+    document.getElementById('cancelTransactionsButton').addEventListener('click', hideTransactionsModal);
     document.getElementById('cancelTransferButton').addEventListener('click', hideTransferModal);
+    document.getElementById('confirmDeleteButton').addEventListener('click', confirmDeleteAccount);
+    document.getElementById('cancelDeleteButton').addEventListener('click', hideDeleteConfirmModal);
+
+    // Set default date range to current month for transactions
+    setDefaultDateRange();
 });
 
 let editAccountId = null;
+let deleteAccountId = null;
 
 function handleTypeChange() {
     const type = document.getElementById('accountType').value;
@@ -28,28 +43,31 @@ function fetchAccounts() {
     fetch('/api/accounts')
         .then(response => response.json())
         .then(data => {
-            // 对数据按市值从大到小排序
-            data.sort((a, b) => (b.marketValue || 0) - (a.marketValue || 0));
+            data.sort((a, b) => (parseFloat(b.marketValue) || 0) - (parseFloat(a.marketValue) || 0));
 
             const accountList = document.getElementById('accountList');
             const fromAccountSelect = document.getElementById('fromAccount');
             const toAccountSelect = document.getElementById('toAccount');
+            const incomeAccountSelect = document.getElementById('incomeAccount');
+            const expenseAccountSelect = document.getElementById('expenseAccount');
             accountList.innerHTML = '';
             fromAccountSelect.innerHTML = '<option value="">选择转出账户</option>';
             toAccountSelect.innerHTML = '<option value="">选择转入账户</option>';
+            incomeAccountSelect.innerHTML = '<option value="">选择账户</option>';
+            expenseAccountSelect.innerHTML = '<option value="">选择账户</option>';
             let totalMarketValue = 0;
             data.forEach(account => {
-                totalMarketValue += account.marketValue || 0;
+                totalMarketValue += parseFloat(account.marketValue) || 0;
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${account.type}</td>
                     <td>${account.details}</td>
                     <td>${account.stockSymbol || ''}</td>
                     <td>${account.shares || ''}</td>
-                    <td>${account.marketValue != null ? account.marketValue.toFixed(2) : 'N/A'}</td>
+                    <td>${account.marketValue != null ? account.marketValue : 'N/A'}</td>
                     <td>
                         <button onclick="editAccount(${account.id})">编辑</button>
-                        <button onclick="deleteAccount(${account.id})">删除</button>
+                        <button onclick="showDeleteConfirmModal(${account.id})">删除</button>
                     </td>
                 `;
                 accountList.appendChild(row);
@@ -59,6 +77,8 @@ function fetchAccounts() {
                 option.textContent = `${account.details} (${account.type})`;
                 fromAccountSelect.appendChild(option);
                 toAccountSelect.appendChild(option.cloneNode(true));
+                incomeAccountSelect.appendChild(option.cloneNode(true));
+                expenseAccountSelect.appendChild(option.cloneNode(true));
             });
             document.getElementById('totalMarketValue').textContent = totalMarketValue.toFixed(2);
         })
@@ -73,7 +93,7 @@ function fetchTypeMarketValues() {
             typeMarketValues.innerHTML = '';
             for (const [type, marketValue] of Object.entries(data)) {
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>${type}</td><td>${marketValue.toFixed(2)}</td>`;
+                row.innerHTML = `<td>${type}</td><td>${marketValue}</td>`;
                 typeMarketValues.appendChild(row);
             }
         })
@@ -140,16 +160,29 @@ function editAccount(id) {
         .catch(error => console.error('Error fetching account:', error));
 }
 
-function deleteAccount(id) {
-    fetch(`/api/accounts/${id}`, {
-        method: 'DELETE'
-    })
-        .then(response => response.json())
-        .then(data => {
-            fetchAccounts();
-            fetchTypeMarketValues();
+function showDeleteConfirmModal(id) {
+    deleteAccountId = id;
+    document.getElementById('deleteConfirmModal').style.display = 'block';
+}
+
+function hideDeleteConfirmModal() {
+    deleteAccountId = null;
+    document.getElementById('deleteConfirmModal').style.display = 'none';
+}
+
+function confirmDeleteAccount() {
+    if (deleteAccountId) {
+        fetch(`/api/accounts/${deleteAccountId}`, {
+            method: 'DELETE'
         })
-        .catch(error => console.error('Error deleting account:', error));
+            .then(response => response.json())
+            .then(data => {
+                fetchAccounts();
+                fetchTypeMarketValues();
+                hideDeleteConfirmModal();
+            })
+            .catch(error => console.error('Error deleting account:', error));
+    }
 }
 
 function refreshMarketValues() {
@@ -208,6 +241,30 @@ function clearForm() {
     handleTypeChange();
 }
 
+function showIncomeModal() {
+    document.getElementById('incomeModal').style.display = 'block';
+}
+
+function hideIncomeModal() {
+    document.getElementById('incomeModal').style.display = 'none';
+}
+
+function showExpenseModal() {
+    document.getElementById('expenseModal').style.display = 'block';
+}
+
+function hideExpenseModal() {
+    document.getElementById('expenseModal').style.display = 'none';
+}
+
+function showTransactionsModal() {
+    document.getElementById('transactionsModal').style.display = 'block';
+}
+
+function hideTransactionsModal() {
+    document.getElementById('transactionsModal').style.display = 'none';
+}
+
 function showTransferModal() {
     document.getElementById('transferModal').style.display = 'block';
 }
@@ -249,4 +306,113 @@ function transferFunds() {
         }
     })
     .catch(error => console.error('Error transferring funds:', error));
+}
+
+function addIncome() {
+    const accountId = parseInt(document.getElementById('incomeAccount').value);
+    const reason = document.getElementById('incomeReason').value;
+    const amount = parseFloat(document.getElementById('incomeAmount').value);
+
+    if (isNaN(accountId) || isNaN(amount) || amount <= 0) {
+        alert('请输入有效的收入信息');
+        return;
+    }
+
+    fetch('/api/income', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            accountId,
+            reason,
+            amount
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideIncomeModal();
+        fetchAccounts();
+        fetchTypeMarketValues();
+        if (data.message) {
+            alert(data.message);
+        } else {
+            alert('收入已记录');
+        }
+    })
+    .catch(error => console.error('Error adding income:', error));
+}
+
+function addExpense() {
+    const accountId = parseInt(document.getElementById('expenseAccount').value);
+    const reason = document.getElementById('expenseReason').value;
+    const amount = parseFloat(document.getElementById('expenseAmount').value);
+
+    if (isNaN(accountId) || isNaN(amount) || amount <= 0) {
+        alert('请输入有效的支出信息');
+        return;
+    }
+
+    fetch('/api/expense', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            accountId,
+            reason,
+            amount
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideExpenseModal();
+        fetchAccounts();
+        fetchTypeMarketValues();
+        if (data.message) {
+            alert(data.message);
+        } else {
+            alert('支出已记录');
+        }
+    })
+    .catch(error => console.error('Error adding expense:', error));
+}
+
+function fetchTransactions() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    if (!startDate || !endDate) {
+        alert('请输入有效的日期范围');
+        return;
+    }
+
+    fetch(`/api/transactions?start=${startDate}&end=${endDate}`)
+        .then(response => response.json())
+        .then(data => {
+            const transactionsList = document.getElementById('transactionsList');
+            transactionsList.innerHTML = '';
+            data.forEach(transaction => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${transaction.accountDetails || '已经删除账户'}</td>
+                    <td>${transaction.change}</td>
+                    <td>${transaction.reason}</td>
+                    <td>${transaction.timestamp}</td>
+                `;
+                transactionsList.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Error fetching transactions:', error));
+}
+
+function setDefaultDateRange() {
+    const startDate = document.getElementById('startDate');
+    const endDate = document.getElementById('endDate');
+
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    startDate.value = firstDayOfMonth.toISOString().split('T')[0];
+    endDate.value = now.toISOString().split('T')[0];
 }
