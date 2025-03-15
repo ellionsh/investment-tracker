@@ -8,10 +8,10 @@ from datetime import datetime, timezone, date, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_migrate import Migrate
 import requests
+import platform
 import re
 import os
 import logging
-import fcntl
 
 app = Flask(__name__)
 app.config.from_object('config.Config')
@@ -575,13 +575,21 @@ def acquire_lock():
         open(lock_file_path, 'w').close()
     lock_file = open(lock_file_path, 'r+')
     try:
-        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if platform.system() == "Windows":
+            import msvcrt
+            # Use Windows-specific functionality
+            msvcrt.locking(lock_file.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            # Use POSIX-specific functionality
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
         return lock_file
     except IOError:
         lock_file.close()
         return None
 
 # 仅在获得锁时添加调度任务
+
 lock_file = acquire_lock()
 if lock_file:
     scheduler.add_job(func=refresh_daily_stock_market_values, trigger='cron', hour=9, minute=0)
