@@ -124,8 +124,12 @@ function addAccount() {
                 clearForm();
                 editAccountId = null;
                 document.getElementById('addAccountButton').textContent = '添加账户';
+                //alert('账户更新成功');
             })
-            .catch(error => console.error('Error updating account:', error));
+            .catch(error => {
+                console.error('Error updating account:', error);
+                showInfoModal('账户更新失败');
+            });
     } else {
         fetch('/api/accounts', {
             method: 'POST',
@@ -139,8 +143,12 @@ function addAccount() {
                 fetchAccounts();
                 fetchTypeMarketValues();
                 clearForm();
+                //showInfoModal('账户添加成功');
             })
-            .catch(error => console.error('Error adding account:', error));
+            .catch(error => {
+                console.error('Error adding account:', error);
+                showInfoModal('账户添加失败');
+            });
     }
 }
 
@@ -180,8 +188,12 @@ function confirmDeleteAccount() {
                 fetchAccounts();
                 fetchTypeMarketValues();
                 hideDeleteConfirmModal();
+                showInfoModal('账户删除成功');
             })
-            .catch(error => console.error('Error deleting account:', error));
+            .catch(error => {
+                console.error('Error deleting account:', error);
+                showInfoModal('账户删除失败');
+            });
     }
 }
 
@@ -193,8 +205,12 @@ function refreshMarketValues() {
         .then(data => {
             fetchAccounts();
             fetchTypeMarketValues();
+            showInfoModal('市值刷新成功');
         })
-        .catch(error => console.error('Error refreshing market values:', error));
+        .catch(error => {
+            console.error('Error refreshing market values:', error);
+            showInfoModal('市值刷新失败');
+        });
 }
 
 function fetchMonthlyMarketValues() {
@@ -279,7 +295,7 @@ function transferFunds() {
     const amount = parseFloat(document.getElementById('transferAmount').value);
 
     if (isNaN(fromAccountId) || isNaN(toAccountId) || isNaN(amount) || amount <= 0) {
-        alert('请输入有效的转账信息');
+        showInfoModal('请输入有效的转账信息');
         return;
     }
 
@@ -300,12 +316,15 @@ function transferFunds() {
         fetchAccounts();
         fetchTypeMarketValues();
         if (data.message) {
-            alert(data.message);
+            showInfoModal(data.message);
         } else {
-            alert('转账成功');
+            showInfoModal('转账成功');
         }
     })
-    .catch(error => console.error('Error transferring funds:', error));
+    .catch(error => {
+        console.error('Error transferring funds:', error);
+        showInfoModal('转账失败');
+    });
 }
 
 function addIncome() {
@@ -314,7 +333,7 @@ function addIncome() {
     const amount = parseFloat(document.getElementById('incomeAmount').value);
 
     if (isNaN(accountId) || isNaN(amount) || amount <= 0) {
-        alert('请输入有效的收入信息');
+        showInfoModal('请输入有效的收入信息');
         return;
     }
 
@@ -335,12 +354,15 @@ function addIncome() {
         fetchAccounts();
         fetchTypeMarketValues();
         if (data.message) {
-            alert(data.message);
+            showInfoModal(data.message);
         } else {
-            alert('收入已记录');
+            showInfoModal('收入已记录');
         }
     })
-    .catch(error => console.error('Error adding income:', error));
+    .catch(error => {
+        console.error('Error adding income:', error);
+        showInfoModal('收入记录失败');
+    });
 }
 
 function addExpense() {
@@ -349,7 +371,7 @@ function addExpense() {
     const amount = parseFloat(document.getElementById('expenseAmount').value);
 
     if (isNaN(accountId) || isNaN(amount) || amount <= 0) {
-        alert('请输入有效的支出信息');
+        showInfoModal('请输入有效的支出信息');
         return;
     }
 
@@ -370,12 +392,15 @@ function addExpense() {
         fetchAccounts();
         fetchTypeMarketValues();
         if (data.message) {
-            alert(data.message);
+            showInfoModal(data.message);
         } else {
-            alert('支出已记录');
+            showInfoModal('支出已记录');
         }
     })
-    .catch(error => console.error('Error adding expense:', error));
+    .catch(error => {
+        console.error('Error adding expense:', error);
+        showInfoModal('支出记录失败');
+    });
 }
 
 function fetchTransactions() {
@@ -383,7 +408,7 @@ function fetchTransactions() {
     const endDate = document.getElementById('endDate').value;
 
     if (!startDate || !endDate) {
-        alert('请输入有效的日期范围');
+        showInfoModal('请输入有效的日期范围');
         return;
     }
 
@@ -403,7 +428,10 @@ function fetchTransactions() {
                 transactionsList.appendChild(row);
             });
         })
-        .catch(error => console.error('Error fetching transactions:', error));
+        .catch(error => {
+            console.error('Error fetching transactions:', error);
+            showInfoModal('获取流水记录失败');
+        });
 }
 
 function setDefaultDateRange() {
@@ -415,4 +443,9 @@ function setDefaultDateRange() {
 
     startDate.value = firstDayOfMonth.toISOString().split('T')[0];
     endDate.value = now.toISOString().split('T')[0];
+}
+
+function showInfoModal(message) {
+    document.getElementById('infoModalBody').textContent = message;
+    $('#infoModal').modal('show');
 }

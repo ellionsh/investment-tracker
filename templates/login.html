@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- 引入 Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .form-group {
             margin-bottom: 15px;
@@ -21,18 +23,73 @@
     </style>
 </head>
 <body>
-    <h1>登录</h1>
-    <form method="POST" action="{{ url_for('login') }}">
-        <div class="form-group">
-            <label for="username">用户名:</label>
-            <input type="text" id="username" name="username" required>
+    <div class="container">
+        <h1>登录</h1>
+        <form id="loginForm" method="POST" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label for="username">用户名:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">登录</button>
+        </form>
+        <p>还没有账户？<a href="{{ url_for('register') }}">注册</a></p>
+    </div>
+
+    <!-- 信息模态对话框 -->
+    <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="infoModalLabel">信息</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="infoModalBody">
+                    <!-- 信息将在这里显示 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                </div>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="password">密码:</label>
-            <input type="password" id="password" name="password" required>
-        </div>
-        <button type="submit">登录</button>
-    </form>
-    <p>还没有账户？<a href="{{ url_for('register') }}">注册</a></p>
+    </div>
+
+    <!-- 引入 jQuery 和 Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#loginForm').on('submit', function(event) {
+                event.preventDefault();
+                
+                const form = event.target;
+                const formData = new FormData(form);
+                const xhr = new XMLHttpRequest();
+                
+                xhr.open('POST', form.action, true);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === XMLHttpRequest.DONE) {
+                        const response = JSON.parse(xhr.responseText);
+                        if (xhr.status === 200) {
+                            window.location.href = "{{ url_for('index') }}";
+                        } else {
+                            $('#infoModalBody').text(response.message);
+                            $('#infoModal').modal('show');
+                        }
+                    }
+                };
+                
+                xhr.send(formData);
+            });
+        });
+    </script>
 </body>
 </html>

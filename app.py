@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import DECIMAL, func
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user, AnonymousUserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone, date, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_migrate import Migrate
@@ -159,12 +160,21 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+
+        # Check if the username already exists
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            return jsonify({'message': '用户名已存在，请选择其他用户名。'}), 400
+
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         new_user = User(username=username, password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        flash('注册成功，请登录。')
-        return redirect(url_for('login'))
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+            return jsonify({'message': '注册成功，请登录。'}), 200
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify({'message': '用户名已存在，请选择其他用户名。'}), 400
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -175,9 +185,9 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password, password):
             login_user(user)
-            return redirect(url_for('index'))
+            return jsonify({'message': '登录成功。'}), 200
         else:
-            flash('用户名或密码错误。')
+            return jsonify({'message': '用户名或者密码错误。'}), 400
     return render_template('login.html')
 
 @app.route('/logout')
@@ -338,7 +348,7 @@ def refresh_market_values():
         for account in accounts:
             stock_price = get_stock_price(account.stockSymbol)
             previous_market_value = float(account.marketValue)
-            new_market_value = stock_price * account.shares * exchange_rate
+            new_market_value = round(stock_price * account.shares * exchange_rate,2)
             if previous_market_value != new_market_value:
                 transaction = Transaction(
                     accountId=account.id,
@@ -510,7 +520,7 @@ def refresh_daily_stock_market_values():
             try:
                 stock_price = get_stock_price(account.stockSymbol)
                 previous_market_value = float(account.marketValue)
-                new_market_value = stock_price * account.shares * exchange_rate
+                new_market_value = round(stock_price * account.shares * exchange_rate,2)
                 if previous_market_value != new_market_value:
                     transaction = Transaction(
                         accountId=account.id,
