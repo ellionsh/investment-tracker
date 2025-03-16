@@ -128,7 +128,7 @@ function addAccount() {
             })
             .catch(error => {
                 console.error('Error updating account:', error);
-                showInfoModal('账户更新失败');
+                alert('账户更新失败');
             });
     } else {
         fetch('/api/accounts', {
@@ -147,7 +147,7 @@ function addAccount() {
             })
             .catch(error => {
                 console.error('Error adding account:', error);
-                showInfoModal('账户添加失败');
+                alert('账户添加失败');
             });
     }
 }
@@ -188,11 +188,11 @@ function confirmDeleteAccount() {
                 fetchAccounts();
                 fetchTypeMarketValues();
                 hideDeleteConfirmModal();
-                showInfoModal('账户删除成功');
+                alert('账户删除成功');
             })
             .catch(error => {
                 console.error('Error deleting account:', error);
-                showInfoModal('账户删除失败');
+                alert('账户删除失败');
             });
     }
 }
@@ -205,11 +205,11 @@ function refreshMarketValues() {
         .then(data => {
             fetchAccounts();
             fetchTypeMarketValues();
-            showInfoModal('市值刷新成功');
+            alert('市值刷新成功');
         })
         .catch(error => {
             console.error('Error refreshing market values:', error);
-            showInfoModal('市值刷新失败');
+            alert('市值刷新失败');
         });
 }
 
@@ -295,7 +295,7 @@ function transferFunds() {
     const amount = parseFloat(document.getElementById('transferAmount').value);
 
     if (isNaN(fromAccountId) || isNaN(toAccountId) || isNaN(amount) || amount <= 0) {
-        showInfoModal('请输入有效的转账信息');
+        alert('请输入有效的转账信息');
         return;
     }
 
@@ -316,14 +316,14 @@ function transferFunds() {
         fetchAccounts();
         fetchTypeMarketValues();
         if (data.message) {
-            showInfoModal(data.message);
+            alert(data.message);
         } else {
-            showInfoModal('转账成功');
+            alert('转账成功');
         }
     })
     .catch(error => {
         console.error('Error transferring funds:', error);
-        showInfoModal('转账失败');
+        alert('转账失败');
     });
 }
 
@@ -333,7 +333,7 @@ function addIncome() {
     const amount = parseFloat(document.getElementById('incomeAmount').value);
 
     if (isNaN(accountId) || isNaN(amount) || amount <= 0) {
-        showInfoModal('请输入有效的收入信息');
+        alert('请输入有效的收入信息');
         return;
     }
 
@@ -354,14 +354,14 @@ function addIncome() {
         fetchAccounts();
         fetchTypeMarketValues();
         if (data.message) {
-            showInfoModal(data.message);
+            alert(data.message);
         } else {
-            showInfoModal('收入已记录');
+            alert('收入已记录');
         }
     })
     .catch(error => {
         console.error('Error adding income:', error);
-        showInfoModal('收入记录失败');
+        alert('收入记录失败');
     });
 }
 
@@ -371,7 +371,7 @@ function addExpense() {
     const amount = parseFloat(document.getElementById('expenseAmount').value);
 
     if (isNaN(accountId) || isNaN(amount) || amount <= 0) {
-        showInfoModal('请输入有效的支出信息');
+        alert('请输入有效的支出信息');
         return;
     }
 
@@ -392,14 +392,14 @@ function addExpense() {
         fetchAccounts();
         fetchTypeMarketValues();
         if (data.message) {
-            showInfoModal(data.message);
+            alert(data.message);
         } else {
-            showInfoModal('支出已记录');
+            alert('支出已记录');
         }
     })
     .catch(error => {
         console.error('Error adding expense:', error);
-        showInfoModal('支出记录失败');
+        alert('支出记录失败');
     });
 }
 
@@ -407,8 +407,8 @@ function fetchTransactions() {
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
 
-    if (!startDate || !endDate) {
-        showInfoModal('请输入有效的日期范围');
+    if (!startDate || !endDate || startDate > endDate) {
+        alert('请输入有效的日期范围');
         return;
     }
 
@@ -430,7 +430,7 @@ function fetchTransactions() {
         })
         .catch(error => {
             console.error('Error fetching transactions:', error);
-            showInfoModal('获取流水记录失败');
+            alert('获取流水记录失败');
         });
 }
 
